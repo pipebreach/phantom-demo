@@ -14,5 +14,13 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install phantom-scan==0.2.0
-      - name: Run detection scenarios (self-checking)
+      - name: Show each difference and phantom's verdict (self-checking)
         run: python run_all.py
+      - name: Demonstrate phantom failing a build on a divergence
+        run: |
+          if python driver.py scenarios/phantom-span; then
+            echo "unexpected: phantom found no divergence"
+            exit 1
+          else
+            echo "phantom exited non-zero: divergence caught, a real CI job fails here"
+          fi
