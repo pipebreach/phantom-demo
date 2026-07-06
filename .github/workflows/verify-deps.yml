@@ -1,0 +1,27 @@
+name: verify-deps
+
+# Consumes the published phantom Action to verify a real dependency's artifact
+# against its declared source, the way a maintainer or consumer would in CI.
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write # for the SARIF upload
+
+jobs:
+  phantom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: pipebreach/phantom@493af6f8aa33a4c8b1a36b620b64b62ed1007bb5 # v0.2.0
+        id: scan
+        with:
+          spec: phantom-scan==0.2.0 # phantom verifying phantom
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@411c4c9a36b3fca4d674f06b6396b2c6d23522c6 # v3.36.3
+        if: always() && hashFiles('phantom-results.sarif') != ''
+        continue-on-error: true # tolerate repos without code scanning enabled
+        with:
+          sarif_file: phantom-results.sarif
