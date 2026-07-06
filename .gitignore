@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.phantom-cache/
+phantom-results.sarif
+.DS_Store
